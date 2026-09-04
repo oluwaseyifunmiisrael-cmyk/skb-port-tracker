@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SKB Logistics — Port Clearance Board</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+:root{
+  --bg:#0c1210;
+  --panel:#121a17;
+  --panel-2:#182420;
+  --flap:#f4b942;
+  --flap-dim:#8a6a2c;
+  --paper:#e9e6d8;
+  --paper-dim:#a9a99a;
+  --line:#28362f;
+  --line-soft:#1c2622;
+  --status-delivered:#5fae72;
+  --status-progress:#f4b942;
+  --status-pending:#6f97ab;
+  --status-alert:#d1573f;
+}
+
+*{ box-sizing:border-box; }
+html,body{ margin:0; padding:0; }
+body{
+  background:var(--bg);
+  color:var(--paper);
+  font-family:'IBM Plex Sans', sans-serif;
+  font-size:14.5px;
+  line-height:1.5;
+}
+.mono{ font-family:'Space Mono', monospace; }
+
+.app{ max-width:1080px; margin:0 auto; }
+
+/* ---------- HEADER / BOARD ---------- */
+header.board{
+  background:var(--panel);
+  border-bottom:1px solid var(--line);
+  padding:22px 22px 16px;
+}
+.board-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  flex-wrap:wrap;
+  gap:10px;
+}
+.board-title{
+  font-family:'Space Mono', monospace;
+  font-weight:700;
+  font-size:clamp(20px,4vw,28px);
+  color:var(--flap);
+  letter-spacing:1px;
+}
+.board-sub{
+  font-family:'Space Mono', monospace;
+  font-size:11.5px;
+  color:var(--paper-dim);
+  letter-spacing:2px;
+  margin-top:4px;
+}
+.board-clock{
+  font-family:'Space Mono', monospace;
+  font-size:12px;
+  color:var(--paper-dim);
+  text-align:right;
+}
+
+/* ---------- TOP-LEVEL VIEW TABS ---------- */
+nav.view-tabs{
+  display:flex;
+  gap:0;
+  background:var(--panel);
+  border-bottom:1px solid var(--line);
+  padding:0 22px;
+}
+nav.view-tabs button{
+  font-family:'Space Mono', monospace;
+  font-size:12px;
+  letter-spacing:0.6px;
+  color:var(--paper-dim);
+  background:none;
+  border:none;
+  padding:13px 4px;
+  margin-right:26px;
+  cursor:pointer;
+  border-bottom:3px solid transparent;
+}
+nav.view-tabs button.active{
+  color:var(--flap);
+  border-bottom:3px solid var(--flap);
+}
+
+/* ---------- GATE TABS (clients) ---------- */
+.gates{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+  padding:14px 22px 0;
+  background:var(--panel);
+  border-bottom:1px solid var(--line);
+}
+.gate{
+  font-family:'Space Mono', monospace;
+  font-size:12px;
+  letter-spacing:0.5px;
+  color:var(--paper-dim);
+  background:var(--panel-2);
+  border:1px solid var(--line);
+  border-bottom:none;
+  padding:9px 14px;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.gate .count{ color:var(--flap-dim); margin-left:6px; }
+.gate.active{
+  color:var(--flap);
+  background:var(--bg);
+  border-color:var(--flap-dim);
+}
+.gate.active .count{ color:var(--flap); }
+
+main{ padding:18px 22px 60px; }
+
+/* ---------- STAT STRIP ---------- */
+.stats{
+  display:flex;
+  flex-wrap:wrap;
+  border:1px solid var(--line);
+  background:var(--panel);
+  margin-bottom:18px;
+}
+.stat{
+  flex:1 1 130px;
+  padding:12px 16px;
+  border-right:1px solid var(--line);
+}
+.stat:last-child{ border-right:none; }
+.stat .num{
+  font-family:'Space Mono', monospace;
+  font-size:24px;
+  font-weight:700;
+}
+.stat .label{
+  font-size:11px;
+  color:var(--paper-dim);
+  margin-top:4px;
+  letter-spacing:0.3px;
+}
+.stat.delivered .num{ color:var(--status-delivered); }
+.stat.progress .num{ color:var(--status-progress); }
+.stat.pending .num{ color:var(--status-pending); }
+.stat.flagged .num{ color:var(--status-alert); }
+
+/* ---------- FILTER BAR ---------- */
+.filterbar{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-bottom:14px;
+}
+.filterbar input[type="text"], .filterbar select{
+  font-family:'IBM Plex Sans', sans-serif;
+  font-size:13.5px;
+  padding:8px 11px;
+  border:1px solid var(--line);
+  background:var(--panel-2);
+  color:var(--paper);
+}
+.filterbar input[type="text"]{ flex:1 1 220px; }
+.filterbar input::placeholder{ color:var(--paper-dim); }
+.filterbar input:focus, .filterbar select:focus{ outline:1px solid var(--flap); outline-offset:-1px; }
+.result-count{
+  font-family:'Space Mono', monospace;
+  font-size:11.5px;
+  color:var(--paper-dim);
+  margin-bottom:10px;
+}
+
+/* ---------- FILE ROWS ---------- */
+.file{
+  border:1px solid var(--line);
+  background:var(--panel);
+  margin-bottom:8px;
+}
+.file.flagged{ border-left:3px solid var(--status-alert); }
+.file-head{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:11px 14px;
+  cursor:pointer;
+  flex-wrap:wrap;
+}
+.file-ref{
+  font-family:'Space Mono', monospace;
+  font-weight:700;
+  font-size:14px;
+  color:var(--flap);
+  min-width:88px;
+}
+.file-mid{ flex:1; min-width:180px; }
+.file-line1{ font-size:13.5px; color:var(--paper); }
+.file-line2{ font-size:11.5px; color:var(--paper-dim); margin-top:2px; }
+.badge{
+  font-family:'Space Mono', monospace;
+  font-size:11px;
+  padding:3px 9px;
+  border:1px solid;
+  white-space:nowrap;
+}
+.badge.delivered{ color:var(--status-delivered); border-color:var(--status-delivered); }
+.badge.progress{ color:var(--status-progress); border-color:var(--status-progress); }
+.badge.pending{ color:var(--status-pending); border-color:var(--status-pending); }
+.days-chip{
+  font-family:'Space Mono', monospace;
+  font-size:11px;
+  color:var(--paper-dim);
+  min-width:70px;
+  text-align:right;
+}
+.days-chip b{ color:var(--paper); font-size:13px; }
+.chev{ color:var(--paper-dim); font-size:11px; width:14px; text-align:center; }
+
+.file-detail{
+  display:none;
+  border-top:1px dashed var(--line);
+  padding:14px;
+  background:var(--panel-2);
+}
+.file.open .file-detail{ display:block; }
+.milestones{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(130px,1fr));
+  gap:10px 16px;
+  margin-bottom:14px;
+}
+.milestone .k{
+  font-size:10.5px;
+  text-transform:uppercase;
+  letter-spacing:0.4px;
+  color:var(--paper-dim);
+}
+.milestone .v{
+  font-family:'Space Mono', monospace;
+  font-size:13px;
+  color:var(--paper);
+  margin-top:2px;
+}
+.milestone .v.empty{ color:var(--line); }
+.remarks-block{
+  border-top:1px solid var(--line);
+  padding-top:12px;
+}
+.remarks-block .k{ font-size:10.5px; text-transform:uppercase; letter-spacing:0.4px; color:var(--paper-dim); margin-bottom:5px; }
+.remarks-text{ font-size:13px; color:var(--paper); line-height:1.6; }
+
+.file-actions{
+  display:flex;
+  justify-content:flex-end;
+  margin-top:12px;
+}
+.flag-btn{
+  font-family:'IBM Plex Sans', sans-serif;
+  font-size:12px;
+  padding:6px 12px;
+  border:1px solid var(--line);
+  background:var(--panel);
+  color:var(--paper-dim);
+  cursor:pointer;
+}
+.flag-btn.on{ color:var(--status-alert); border-color:var(--status-alert); }
+
+.empty-state{
+  padding:40px 20px;
+  text-align:center;
+  color:var(--paper-dim);
+  border:1px dashed var(--line);
+}
+
+/* ---------- KPI VIEW ---------- */
+.kpi-section-title{
+  font-family:'Space Mono', monospace;
+  font-size:13px;
+  color:var(--flap);
+  letter-spacing:0.6px;
+  margin:0 0 10px;
+  padding-bottom:6px;
+  border-bottom:1px solid var(--line);
+}
+.kpi-section{ margin-bottom:30px; }
+
+.funnel{ display:flex; flex-direction:column; gap:6px; }
+.funnel-row{ display:flex; align-items:center; gap:10px; }
+.funnel-label{
+  font-size:12.5px;
+  color:var(--paper-dim);
+  width:170px;
+  flex-shrink:0;
+}
+.funnel-track{
+  flex:1;
+  background:var(--panel-2);
+  border:1px solid var(--line);
+  height:16px;
+  position:relative;
+}
+.funnel-fill{
+  height:100%;
+  background:var(--flap-dim);
+}
+.funnel-count{
+  font-family:'Space Mono', monospace;
+  font-size:12px;
+  color:var(--paper);
+  width:26px;
+  text-align:right;
+  flex-shrink:0;
+}
+
+.client-kpi-grid{ display:flex; flex-direction:column; gap:10px; }
+.client-kpi-card{
+  border:1px solid var(--line);
+  background:var(--panel);
+  padding:14px 16px;
+}
+.client-kpi-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:baseline;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-bottom:10px;
+}
+.client-kpi-head .name{
+  font-family:'Space Mono', monospace;
+  font-size:14px;
+  color:var(--flap);
+  letter-spacing:0.5px;
+}
+.client-kpi-head .dwell{
+  font-family:'Space Mono', monospace;
+  font-size:12px;
+  color:var(--paper-dim);
+}
+.client-kpi-head .dwell b{ color:var(--paper); }
+.kpi-mini-row{
+  display:flex;
+  gap:16px;
+  flex-wrap:wrap;
+  margin-bottom:10px;
+  font-size:12px;
+  color:var(--paper-dim);
+}
+.kpi-mini-row b{ color:var(--paper); font-family:'Space Mono', monospace; }
+.reco-list{ margin:0; padding-left:18px; }
+.reco-list li{ font-size:13px; color:var(--paper); margin-bottom:5px; }
+.reco-list li:last-child{ margin-bottom:0; }
+.no-issue{ font-size:13px; color:var(--status-delivered); }
+
+footer.notice{
+  max-width:1080px;
+  margin:0 auto;
+  padding:14px 22px 40px;
+  font-size:11.5px;
+  color:var(--paper-dim);
+}
+
+/* ---------- ADD / EDIT ENTRY ---------- */
+.entry-bar{
+  display:flex;
+  justify-content:flex-end;
+  margin-bottom:12px;
+}
+.btn{
+  font-family:'Space Mono', monospace;
+  font-size:12px;
+  letter-spacing:0.4px;
+  padding:9px 14px;
+  border:1px solid var(--flap-dim);
+  background:var(--panel-2);
+  color:var(--flap);
+  cursor:pointer;
+}
+.btn:hover{ background:var(--panel); }
+.btn.secondary{ border-color:var(--line); color:var(--paper-dim); }
+.btn.danger{ border-color:var(--status-alert); color:var(--status-alert); }
+
+.modal-overlay{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(6,10,8,0.72);
+  z-index:50;
+  padding:24px 14px;
+  overflow-y:auto;
+}
+.modal-overlay.open{ display:flex; justify-content:center; align-items:flex-start; }
+.modal{
+  background:var(--panel);
+  border:1px solid var(--flap-dim);
+  max-width:640px;
+  width:100%;
+  margin:20px 0;
+}
+.modal-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:14px 18px;
+  border-bottom:1px solid var(--line);
+}
+.modal-head .title{
+  font-family:'Space Mono', monospace;
+  font-size:13px;
+  color:var(--flap);
+  letter-spacing:0.6px;
+}
+.modal-close{
+  background:none;
+  border:none;
+  color:var(--paper-dim);
+  font-size:18px;
+  cursor:pointer;
+  line-height:1;
+}
+.modal-body{ padding:16px 18px; }
+.form-row{
+  display:grid;
+  grid-template-columns:1fr;
+  margin-bottom:12px;
+}
+.form-row label{
+  font-size:10.5px;
+  text-transform:uppercase;
+  letter-spacing:0.4px;
+  color:var(--paper-dim);
+  margin-bottom:5px;
+}
+.form-row input, .form-row select, .form-row textarea{
+  font-family:'IBM Plex Sans', sans-serif;
+  font-size:13.5px;
+  padding:8px 10px;
+  border:1px solid var(--line);
+  background:var(--panel-2);
+  color:var(--paper);
+}
+.form-row textarea{ min-height:80px; resize:vertical; font-family:'IBM Plex Sans', sans-serif; }
+.form-row input:focus, .form-row select:focus, .form-row textarea:focus{ outline:1px solid var(--flap); outline-offset:-1px; }
+.form-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+  gap:0 14px;
+}
+.form-hint{
+  font-size:11px;
+  color:var(--paper-dim);
+  margin-bottom:14px;
+}
+.modal-actions{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:14px 18px;
+  border-top:1px solid var(--line);
+}
+.modal-actions .right{ display:flex; gap:8px; }
+.form-error{
+  font-size:12px;
+  color:var(--status-alert);
+  margin-bottom:10px;
+  display:none;
+}
+.form-error.show{ display:block; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="board">
+    <div class="board-top">
+      <div>
+        <div class="board-title">SKB LOGISTICS</div>
+        <div class="board-sub">PORT CLEARANCE STATUS BOARD — ONGOING FILES</div>
+      </div>
+      <div>
+        <div class="board-clock" id="summary-clock"></div>
+        <div class="board-clock" id="sync-status" style="margin-top:2px;"></div>
+      </div>
+    </div>
+  </header>
+
+  <nav class="view-tabs">
+    <button id="tab-board" class="active">FILES BOARD</button>
+    <button id="tab-kpis">KPIS &amp; RECOMMENDATIONS</button>
+  </nav>
+
+  <div id="view-board">
+    <nav class="gates" id="gates"></nav>
+
+    <main>
+      <div class="stats" id="stats"></div>
+
+      <div class="entry-bar">
+        <button class="btn" id="new-file-btn">+ New file</button>
+      </div>
+
+      <div class="filterbar">
+        <input type="text" id="search" placeholder="Search file ref, officer, location, shipping line, remarks…">
+        <select id="stage-filter">
+          <option value="all">All stages</option>
+          <option value="delivered">Delivered</option>
+          <option value="progress">In process</option>
+          <option value="pending">Awaiting arrival</option>
+        </select>
+        <select id="flag-filter">
+          <option value="all">All files</option>
+          <option value="flagged">Flagged only</option>
+        </select>
+      </div>
+
+      <div class="result-count" id="result-count"></div>
+      <div id="file-list"></div>
+    </main>
+  </div>
+
+  <div id="view-kpis" style="display:none;">
+    <main>
+      <div class="kpi-section">
+        <div class="kpi-section-title">PORTFOLIO SNAPSHOT</div>
+        <div class="stats" id="portfolio-stats"></div>
+      </div>
+
+      <div class="kpi-section">
+        <div class="kpi-section-title">WHERE OPEN FILES CURRENTLY SIT (ALL CLIENTS)</div>
+        <div class="funnel" id="process-funnel"></div>
+      </div>
+
+      <div class="kpi-section">
+        <div class="kpi-section-title">PROCESS-LEVEL RECOMMENDATIONS</div>
+        <ul class="reco-list" id="process-recos"></ul>
+      </div>
+
+      <div class="kpi-section">
+        <div class="kpi-section-title">PER-CLIENT KPIS &amp; RECOMMENDATIONS</div>
+        <div class="client-kpi-grid" id="client-kpi-grid"></div>
+      </div>
+    </main>
+  </div>
+
+  <footer class="notice">
+    Flags are shared — anyone with this board open can see and set them. New and edited files are shared too — everyone with this board open sees your updates. Stage labels and KPIs are derived from the milestone dates and remarks on file and are a guide, not a formal status. Recommendations are generated from recurring keywords in the remarks log (queries, holds, payment waits, etc.) — check individual files before acting on them.
+  </footer>
+
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal">
+      <div class="modal-head">
+        <span class="title" id="modal-title">NEW FILE</span>
+        <button class="modal-close" id="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <label for="form-client">Client</label>
+          <select id="form-client"></select>
+        </div>
+        <div class="form-error" id="form-error"></div>
+        <div class="form-hint">Dates as typed elsewhere on this board, e.g. 24/04/26. Leave a field blank if not yet known — the board will show it as pending.</div>
+        <div class="form-grid" id="form-fields"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn danger" id="form-delete" style="display:none;">Delete file</button>
+        <div class="right">
+          <button class="btn secondary" id="form-cancel">Cancel</button>
+          <button class="btn" id="form-save">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyDToiBotsnDrqq2-RlObhiOJJ1OkGzy1NE",
+  authDomain: "skb-port-tracker.firebaseapp.com",
+  projectId: "skb-port-tracker",
+  storageBucket: "skb-port-tracker.firebasestorage.app",
+  messagingSenderId: "1065655078640",
+  appId: "1:1065655078640:web:b6c7b723264fb195ed7c35"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+const DEFAULT_RAW = {"LAFARGE":[{"fileRef":"LFG 461","bol":null,"allocDate":"02/12/25","size":"550 KG","officer":"MR ISHO","place":"IKEJA","eta":"21/01/26","ata":"21/01/26","shippingLine":"MAS GLOBAL","duty":null,"shippingRelease":null,"customRel":null,"transfer":null,"tdo":null,"daysAtPort":null,"remarks":"DELIVERED 10/2/2026"},{"fileRef":"LFG 464","bol":null,"allocDate":"16/02/25","size":"495 KG","officer":"MR ISHO","place":"EWEKORO","eta":"24/02/26","ata":"25/03/26","shippingLine":"FORTUNE GLOBAL","duty":null,"shippingRelease":null,"customRel":"04/05/26","transfer":"27/03/26","tdo":null,"daysAtPort":158,"remarks":"DUTY PAID 9/3/26 EXAMINATION 27/3/26 CUSTOM QUERIED 30/3/26. REFER TO Q/A 2/4/26 EASTER PH 2-6/4/26 QUERY DEFENSE FAILED 23/4/26.APPROVAL TO PICK DN 24/4/26 DN PAID BY SKB 4/5/26.AWAIT CUSTOM RELEASE"},{"fileRef":"LFG 465","bol":null,"allocDate":"05/01/25","size":"406 KG","officer":"MR ISHO","place":"EWEKORO","eta":"21/02/26","ata":null,"shippingLine":"SHARAF","duty":null,"shippingRelease":"02/04/26","customRel":"01/04/26","transfer":"13/03/26","tdo":null,"daysAtPort":172,"remarks":"DELIVERED 2/4/26"},{"fileRef":"LFG 466","bol":null,"allocDate":"16/01/26","size":"1680 KG","officer":"MR NURU","place":"MFAMOSING","eta":"03/04/26","ata":"28/03/26","shippingLine":"APMDC","duty":null,"shippingRelease":"22/04/26","customRel":"23/04/26","transfer":"20/04/26","tdo":"24/04/26","daysAtPort":134,"remarks":"COPY DOCS AND FORM M RECEIVED 16/1/26 OBL RECEIVED 26/1/26.DUTY PAID 31/3/26. UNIT UNSTUFFED 14/4/26,EXAMINATION CONDUCTED AND SHIPMENT FOR NON-DECLARATION 21/4/26 QUERY RESOLVED,CUSTOM RELEASED 23/4/26, TDO READY, UNIT LOADED 24/4/26 DELIVERED 29/4/26"},{"fileRef":"RKT 1346","bol":null,"allocDate":"15/01/26","size":"1X20FT","officer":"MR OLUSEYE","place":"AGBARA","eta":"28/01/26","ata":null,"shippingLine":"MAERSK","duty":null,"shippingRelease":null,"customRel":null,"transfer":null,"tdo":null,"daysAtPort":null,"remarks":"DELIVERED 9/2/2026"},{"fileRef":"SWISS 109","bol":null,"allocDate":"07/01/26","size":"1X40FT","officer":"MR OLUSEYE","place":"DOPEMU","eta":"14/01/26","ata":"14/01/26","shippingLine":"CMA","duty":null,"shippingRelease":"30/01/26","customRel":null,"transfer":null,"tdo":null,"daysAtPort":null,"remarks":"DELIVERED 8/2/2026"},{"fileRef":"SWISS 110","bol":null,"allocDate":"09/01/26","size":"4X40FT","officer":"MR OLUSEYE","place":"MATORI","eta":"10/01/26","ata":null,"shippingLine":"HAPAG LLOYD","duty":null,"shippingRelease":"30/01/26","customRel":null,"transfer":null,"tdo":null,"daysAtPort":null,"remarks":"DELIVERED 5/2/2026"},{"fileRef":"LFG 467","bol":null,"allocDate":"16/02/26","size":"1X40FT","officer":"MR RASHEED","place":"MFAMOSING","eta":"14/03/26","ata":"04/04/26","shippingLine":"PIL","duty":null,"shippingRelease":"22/04/26","customRel":"17/04/26","transfer":"04/04/26","tdo":"24/04/26","daysAtPort":150,"remarks":"COPY DOCS AND FORM M RECEIVED 16/2/26DTI SHARED 1/4/26  DUTY PAID , EXAM BOOKED 8/4/26 EXAMINATION HELD 10/4/26,QUERY FOR NO PICTURES DURING EXAMINATION 13/4/26,CUSTOM/SHIPPING RELEASED 21/4/26 TDO IS READY 24/4/26 SHIPMENT LOADED 28/4/26 TRUCK IN TRANSIT"},{"fileRef":"LFG 468","bol":null,"allocDate":"16/02/26","size":null,"officer":null,"place":"ASHAKA","eta":"04/03/26","ata":null,"shippingLine":"WSC","duty":null,"shippingRelease":null,"customRel":null,"transfer":null,"tdo":null,"daysAtPort":null,"remarks":"COPY DOCS AND FORM M RECEIVED 16/2/26, AWAIT PAAR"},{"fileRef":"LFG 469","bol":null,"allocDate":"16/02/26","size":"1555 KG","officer":"MR OLUSEYE","place":"MFAMOSING","eta":"23/03/26","ata":"28/03/26","shippingLine":"WSC","duty":null,"shippingRelease":"22/04/26","customRel":"06/05/26","transfer":"22/04/26","tdo":"07/05/26","daysAtPort":132,"remarks":"COPY DOCS AND FORM M RECEIVED 16/2/26.DTI SHARED 31/3/26  DUTY PAYMENT 7/4/26. UNIT UNSTUFFED AT COB 17/4/2026 EXAMINATION CONDUCTED 21/4/26 QUERY FOR WRONG CLASSIFICATION(8474) INSTEAD OF 8532.22 CLEAR HEADING ELECTROLYSTIC CAPACITOR (5% DUTY & 7.5% VAT). DN DRAFT OF 2.1MILLION RAISED 21/4/26. DN DEFENSE FAILED 23/4/26 APPROVAL WAS GIVEN TO PICK DN 24/4/26 DN PAID 29/4/26 CIU QUERIES DN FOR SHORT PAYMENT 4/5/26.QUERIED SETTLED WITH 200K 6/5/26.TDO 7/5/26 LOADED 8/5/26"},{"fileRef":"LFG 470","bol":null,"allocDate":"18/02/26","size":"7X20FT","officer":"MR OLUSEYE","place":"MFAMOSING","eta":"11/04/26","ata":"26/04/26","shippingLine":"MSC","duty":null,"shippingRelease":"12/05/26","customRel":"11/05/26","transfer":"28/04/26","tdo":"13/05/26","daysAtPort":126,"remarks":"COPY DOCS AND FORM M RECEIVED 18/2/26,  RTN 27/4/26.DTI SHARED 28/4/26   DUTY PAYMENT MADE 30/4/26.EXAMINATION BOOKED 5/5/26 SHIPMENT RE-ROUTED TO SCANNING,UNITS SCANNED 7/5/26 CUSTOM RELEASE AS AT COB 11/5/26 NESREA HOLDS REMOVED 12/5/26 TDO READY COB 13/5/26 . 5 0F 7 LOADED SO FAR"},{"fileRef":"LFG 471","bol":null,"allocDate":"25/02/26","size":"441 KG","officer":"MR NURU","place":"MFAMOSING","eta":"11/04/26","ata":"29/04/26","shippingLine":"APMDC","duty":null,"shippingRelease":null,"customRel":null,"transfer":"01/06/26","tdo":null,"daysAtPort":92,"remarks":"COPY OF DOCS/FORM M RECEIVED 24/2/26  PAAR RECEIVED AT COB 20/4/26 RTN RECEIVED, DRAFT SHARED AT COB 4/5/26 DTI SHARED 5/5/26 DUTY PAID 6/5/26 UNIT TRANSFERRED & UNSTUFFED 1/6/26 EXAM BOOKED 2/6/26 EXAM CONDUCTED 3/6/26 AWAIT CUSTOM RELEASE DUE TO POOR NETWORK AT APMDC TILL 10/6/26  ALERT ON THE INPECTION ACT,SHIPMENT REFERS TO VALUATION 15/6/26 REFERRED TO Q/A  18/6/26 NCS INSIST TO RAISE DN AT Q/A19/6/26 PROTEST LETTER SUBMITTED 22/6/26 LETTER MINUTED FROM DC REVENUE TO Q/A 24/6/26. FINAL REPORT FROM HEAD OF Q/A TO CAC REVENUE (PUTTING IT UNDER 4019) 29/6/26. AWAIT CAC COMMENT"},{"fileRef":"LFG 472","bol":null,"allocDate":"26/02/26","size":"1X20FT","officer":"MR AYO","place":"MFAMOSING","eta":"05/04/26","ata":"15/04/26","shippingLine":"PIL","duty":null,"shippingRelease":"24/04/26","customRel":"29/04/26","transfer":"15/04/26","tdo":"30/04/26","daysAtPort":139,"remarks":"COPY OF DOCS/FORM M RECEIVED 24/2/26 . PAAR RECEIVED  AT COB 13/4/26 . DTI SHARED 14/4/26. DUTY PAID 16/4/26 EXAMINATION BOOKED 21/4/26 EXAMINATION  CONDUCTED TODAY 22/4/26 MARITIME POLICE HOLDS 24/4/26 MP RELEASE 28/4/26 NESREA RELEASED 30/4/26 TDO READY 30/4/26 SHIPMENT LOADED 1/5/26 TRUCK IN TRANSIT TO MFAMOSING"},{"fileRef":"LFG 473","bol":null,"allocDate":"02/03/26","size":"685 KG","officer":"MR OLUSEYE","place":"MFAMOSING","eta":"04/04/26","ata":"04/04/24","shippingLine":"SHOTTO LOGISTICS","duty":null,"shippingRelease":"07/05/26","customRel":"06/05/26","transfer":null,"tdo":"07/05/26","daysAtPort":null,"remarks":"COPY OF DOCS/FORM M RECEIVED 2/3/26. PAAR RECEIVED 23/4/26 DTI 23/4/26  DUTY PAID 29/4/29 EXAMINATION CONDUCTED 4/5/26 CUSTOM RELEASED 6/5/26 TDO 7/5/26 LOADED 7/5/26"},{"fileRef":"LFG 474","bol":null,"allocDate":"02/03/26","size":"1X40FT","officer":"MR ISHO","place":"ASHAKA","eta":"26/03/26","ata":"13/04/26","shippingLine":"HAPAG LLOYD","duty":null,"shippingRelease":"23/04/26","customRel":"23/04/26","transfer":"13/04/26","tdo":"24/04/26","daysAtPort":141,"remarks":"COPY OF DOCS/FORM M RECEIVED 2/3/26.OBL RECEIVED 10/3/26. PAAR RECEIVED 27/3/26 PROCESSING INCREASE IN PACKAGES 27/3/26 DTI SHARED 30/3/26. DUTY RECEIVED 1/4/26. UNIT TRANSFERRED 13/4/26 EXAMINATION BOOKED 16/4/26 EXAMINATION CONDUCTED 17/4/26 SHIPMENT QUERIES ,REFERS TO Q/A 21/4/26 QUERY RESOLVED AT COB 23/4/26 TDO READY 24/4/26 TRUCK LOADED 28/4/26 TRUCK ARRIVED ASHAKA 4/5/26"},{"fileRef":"LFG 475","bol":null,"allocDate":"16/03/26","size":"6X20FT","officer":"MR RASHEED","place":"ASHAKA","eta":"26/04/26","ata":"28/04/26","shippingLine":"MSC","duty":null,"shippingRelease":null,"customRel":null,"transfer":"28/04/26","tdo":null,"daysAtPort":126,"remarks":"FILE RECEIVED 16/3/26. CONTAINERS DISCHARGED AT APMT 28/4/26.  PAAR RECEIVED , DTI SHARED 15/5/26.DUTY RECEIPT RECEIVED 19/5/26 NAFDAC ENDORSEMENT CONFIRMED & SCANNING BOOKED 21/5/26 UNITS SCANNED 25/5/26 SALAH PH 27-28/5/26 CUSTOM RELEASED 1/6/26 SHIPPING RELEASE AT COB 3/6/26.  ALL UNITS LOADED 5/6/26, TRUCKS ARE IN TRANSIT TO ASHAKA"},{"fileRef":"LFG 476","bol":null,"allocDate":"27/03/26","size":"287 KG","officer":"MR NURU","place":"EWEKORO","eta":"21/04/26","ata":"08/06/26","shippingLine":"FORTUNE GLOBAL","duty":null,"shippingRelease":null,"customRel":null,"transfer":"08/06/26","tdo":null,"daysAtPort":85,"remarks":"FILE RECEIVED 30/2/26. PAAR RECEIVED AT COB 6/5/26. DTI AT COB 13/5/26. DUTY PAID 14/5/26 UNIT UNSTUFFED AT COB 8/6/26 EXAMINATION CONDUCTED 11/6/26 RELEASING OFFICER QUERIES FOR WRONG CLASSIFICATION 11/6/26.NO NETWORK TO REFER TO Q and A AS AT COB 16/6/26 REFERRED TO Q/A  18/6/26 NCS INSIST TO RAISE DN AT Q/A19/6/26 PROTEST LETTER SUBMITTED 22/6/26 LETTER MINUTED FROM DC REVENUE TO Q/A 24/6/26. FINAL REPORT FROM HEAD OF Q/A TO CAC REVENUE (PUTTING IT UNDER 7318/2900)26/6/26. AWAIT CAC COMMENT"},{"fileRef":"LFG 477","bol":null,"allocDate":"07/04/26","size":"1X40FT","officer":"MR RASHEED","place":"EWEKORO","eta":"03/05/26","ata":"06/05/26","shippingLine":"MAERSK","duty":null,"shippingRelease":"14/05/26","customRel":null,"transfer":"06/05/26","tdo":null,"daysAtPort":118,"remarks":"FILE ALLOCATED 7/4/26.PAAR RECEIVED 16/4/26 DTI SHARED 29/4/26 DUTY PAID 7/5/26.  NAFDAC ENDORSED. SCANNING BOOKED 11/5/26. UNIT SCANNED 13/5/26.RELEASING OFFICER QUERIES FOR WRONG CLASSIFICATION"},{"fileRef":"LFG 478","bol":null,"allocDate":"20/04/26","size":"105 KGS","officer":"MR AYO","place":"EWEKORO","eta":"20/05/26","ata":"26/06/26","shippingLine":"SHARAF","duty":null,"shippingRelease":null,"customRel":null,"transfer":"26/06/26","tdo":null,"daysAtPort":67,"remarks":"FILE RECEIVED 20/4/26. PAAR RECEIVED 6/5/26 RTN RECEIVED 21/5/26.DTI 22/5/26 DUTY PAID 26/5/26 UNIT UNSTUFFED 26/6/26. EXAM BOOKED 26/6/26 AWAIT EXAMINATION"},{"fileRef":"LFG 479","bol":null,"allocDate":"22/04/26","size":"2818 KGS","officer":"MR RASHEED","place":"EWEKORO","eta":"01/06/26","ata":"26/06/26","shippingLine":"FORTUNE GLOBAL","duty":null,"shippingRelease":null,"customRel":null,"transfer":"26/06/26","tdo":null,"daysAtPort":67,"remarks":"FILE RECEIVED 23/4/26.PAAR RECEIVED 20/5/26.  ROT NUMBER RECEIVED; DTI SHARED 22/6/26.DUTY PAID 23/6/26. UNIT UNSTUFFED 26/6/26. EXAM BOOKED 26/6/26 AWAIT EXAMINATION"},{"fileRef":"LFG 480","bol":null,"allocDate":"28/04/26","size":"2X20FT","officer":"MR OLUSEYE","place":"MFAMOSING","eta":"20/06/26","ata":null,"shippingLine":"PIL","duty":null,"shippingRelease":null,"customRel":null,"transfer":"24/06/26","tdo":null,"daysAtPort":69,"remarks":"FILE RECEIVED 25/5/26. PAAR RECEIVED 11/6/26. DTI SHARED 16/6/26   DUTY RECEIPT RECEIVED 19/6/26,  EXAM BOOKED 25/6/26  EXAMINATION CONDUCTED 29/6/26"},{"fileRef":"LFG 481","bol":null,"allocDate":"28/04/26","size":"1X20FT","officer":"MR OLUSEYE","place":"ASHAKA","eta":"20/06/26","ata":null,"shippingLine":"PIL","duty":null,"shippingRelease":null,"customRel":null,"transfer":"24/06/26","tdo":null,"daysAtPort":69,"remarks":"FILE RECEIVED 25/5/26, PAAR RECEIVED AT COB 18/6/26.RTN RECEIVED 24/6/26 BOL MANIFEST CREATED, PAAR AMENDED; DTI SHARED  24/6/26. DUTY PAID 25/6/26 EXAM BOOKED 25/6/26 EXAMINATION CONDUCTED 29/6/26"},{"fileRef":"LFG 482","bol":null,"allocDate":"12/05/26","size":"168 KGS","officer":"MR NURU","place":"EWEKORO","eta":"05/07/26","ata":null,"shippingLine":"MAS GLOBAL","duty":null,"shippingRelease":null,"customRel":null,"transfer":null,"tdo":null,"daysAtPort":null,"remarks":"FILE RECEIVED 12/5/26. AWAIT PAAR & VESSEL ARRIVAL"},{"fileRef":"LFG 483","bol":null,"allocDate":"15/05/26","size":"250 KGS","officer":"MR AYO","place":"MFAMOSING","eta":"23/06/26","ata":"24/06/26","shippingLine":"OVERSEAS-FREIGHTERS","duty":null,"shippingRelease":null,"customRel":null,"transfer":null,"tdo":null,"daysAtPort":null,"remarks":"FILE RECEIVED 15/5/26. PAAR RECEIVED 1/6/26. DTI SHARED 29/6/26 AWAIT DUTY PAYMENT BY SKB"},{"fileRef":"LFG 484","bol":null,"allocDate":"19/05/26","size":null,"officer":null,"place":"MFAMOSING","eta":"13/07/26","ata":null,"shippingLine":"CMA-CGM","duty":null,"shippingRelease":null,"customRel":null,"transfer":null,"tdo":null,"daysAtPort":null,"remarks":"FILE RECEIVED 19/5/26. AWAIT VESSEL ARRIVAL & PAAR"},{"fileRef":"LFG 485","bol":null,"allocDate":"29/06/26","size":"905KG","officer":null,"place":"IKEJA","eta":null,"ata":null,"shippingLine":"APMDC","duty":null,"shippingRelease":null,"customRel":null,"transfer":null,"tdo":null,"daysAtPort":null,"remarks":"FILE RECEIVED 29/5/26. OBL RECEIVED 10/6/26 . PAAR RECEIVED 11/6/26. AWAIT VESSEL ARRIVAL & ETA INFO"},{"fileRef":"LFG 486","bol":null,"allocDate":"29/5/26","size":"1140KG","officer":null,"place":"MFAMOSING","eta":"25/06/26","ata":null,"shippingLine":"FORTUNE GLOBAL","duty":null,"shippingRelease":null,"customRel":null,"transfer":null,"tdo":null,"daysAtPort":null,"remarks":"FILE RECEIVED 29/5/26. OBL RECEIVED 10/6/26 AWAIT VESSEL ARRIVAL"},{"fileRef":"LFG 487","bol":null,"allocDate":"06/08/26","size":"2X20FT","officer":null,"place":"EWEKORO","eta":"27/06/26","ata":null,"shippingLine":"PIL","duty":null,"shippingRelease":null,"customRel":null,"transfer":null,"tdo":null,"daysAtPort":null,"remarks":"FILE RECEIVED 08/6/26. AWAIT PAAR & VESSEL ARRIVAL"},{"fileRef":"LFG 488","bol":null,"allocDate":"06/08/26","size":"1X40FT","officer":null,"place":"EWEKORO","eta":"27/06/26","ata":null,"shippingLine":"PIL","duty":null,"shippingRelease":null,"customRel":null,"transfer":null,"tdo":null,"daysAtPort":null,"remarks":"FILE RECEIVED 08/6/26. AWAIT PAAR & VESSEL ARRIVAL"},{"fileRef":"LFG 489","bol":null,"allocDate":"06/08/26","size":"2X20FT","officer":null,"place":"EWEKORO","eta":"04/07/26","ata":null,"shippingLine":"PIL","duty":null,"shippingRelease":null,"customRel":null,"transfer":null,"tdo":null,"daysAtPort":null,"remarks":"FILE RECEIVED 08/6/26. AWAIT PAAR & VESSEL ARRIVAL"},{"fileRef":"LFG 490","bol":null,"allocDate":"06/08/26","size":"872KG","officer":null,"place":"EWEKORO","eta":null,"ata":null,"shippingLine":"APMDC","duty":null,"shippingRelease":null,"customRel":null,"transfer":null,"tdo":null,"daysAtPort":null,"remarks":"FILE RECEIVED 09/6/26. AWAIT PAAR & VESSEL ARRIVAL"},{"fileRef":"LFG 491","bol":null,"allocDate":"15/06/26","size":"2X20FT","officer":null,"place":"EWEKORO","eta":null,"ata":null,"shippingLine":"PIL","duty":null,"shippingRelease":null,"customRel":null,"transfer":null,"tdo":null,"daysAtPort":null,"remarks":"FILE RECEIVED 16/6/26. AWAIT PO NUMBER;PAAR & VESSEL ARRIVAL"},{"fileRef":"LFG 492","bol":null,"allocDate":"19/06/26","size":"1800KG","officer":null,"place":"EWEKORO","eta":null,"ata":null,"shippingLine":"APMDC","duty":null,"shippingRelease":null,"customRel":null,"transfer":null,"tdo":null,"daysAtPort":null,"remarks":"FILE RECEIVED 19/6/26. AWAIT PAAR & VESSEL ARRIVAL"},{"fileRef":"LFG 493","bol":null,"allocDate":"22/06/26","size":"1X40FT","officer":null,"place":"EWEKORO","eta":null,"ata":null,"shippingLine":"PIL","duty":null,"shippingRelease":null,"customRel":null,"transfer":null,"tdo":null,"daysAtPort":null,"remarks":"FILE RECEIVED 22/6/26. AWAIT PAAR & VESSEL ARRIVAL"},{"fileRef":"LFG 494","bol":null,"allocDate":"22/06/26","size":"2408K","officer":null,"place":"EWEKORO","eta":null,"ata":null,"shippingLine":"PIL","duty":null,"shippingRelease":null,"customRel":null,"transfer":null,"tdo":null,"daysAtPort":null,"remarks":"FILE RECEIVED 22/6/26. AWAIT PAAR & VESSEL ARRIVAL"},{"fileRef":"LFG 495","bol":null,"allocDate":"25/06/26","size":"1X20FT","officer":null,"place":"EWEKORO","eta":"19/08/26","ata":null,"shippingLine":"MSC","duty":null,"shippingRelease":null,"customRel":null,"transfer":null,"tdo":null,"daysAtPort":null,"remarks":"FILE RECEIVED 25/6/26. AWAIT PAAR & VESSEL ARRIVAL"},{"fileRef":"LFG 496","bol":null,"allocDate":"26/06/26","size":"1X20FT","officer":null,"place":"MFAMOSING","eta":"02/08/26","ata":null,"shippingLine":"MAERSK","duty":null,"shippingRelease":null,"customRel":null,"transfer":null,"tdo":null,"daysAtPort":null,"remarks":"FILE RECEIVED 26/6/26. AWAIT PAAR & VESSEL ARRIVAL"}],"TEMPO":[{"fileRef":"TPPP 094","bol":"MEDUJ4276286","allocDate":"28/01/26","size":"11X40FT","officer":"MR AYO","place":"OTA","eta":"24/02/26","ata":"19/04/26","shippingLine":"MSC","duty":null,"shippingRelease":"22/04/26","customRel":"15/05/26","transfer":"03/05/26","tdo":null,"daysAtPort":121,"remarks":"COPY DOCS AND FORM M RECEIVED 28/1/26,DUTY PAID 13/4/26. SHIPPING RELEASED 22/4/26  FULL UNITS TRANSFERED TO MEDLOG TERMINAL 3/5/26. AWAIT TERMINAL PAYMENT BY TEMPO TILL 13/5/26. EXAM BOOKED 13/5/26 EXAM CONDUCTED 14/5/26 CUSTOM RELEASED 15/5/26 AWAIT GATE ENDORSEMENT AT THE MOMENT"},{"fileRef":"TPPP 095","bol":"THD1470376","allocDate":"11/02/26","size":"4X40FT","officer":"MR ISHO","place":"OTA","eta":"20/04/26","ata":"20/04/26","shippingLine":"CMA","duty":null,"shippingRelease":null,"customRel":null,"transfer":"07/05/26","tdo":null,"daysAtPort":117,"remarks":"COPY DOCS AND FORM M RECEIVED 11/2/26,DUTY PAID 24/4/26. ONE UNIT TRANSFERRED TO ESS LIBRA TERMINAL IKORODU SO FAR 7/5/26. AWAIT TERMINAL & SHIPPING PAYMENT BY TEMPO TILL COB 14/5/26 EXAM BOOKED 15/5/26 AWAIT EXAMINATION"},{"fileRef":"TPPP 096","bol":"COSU6442890860","allocDate":"17/02/26","size":"1X20FT","officer":"MR OLUSEYE","place":"OTA","eta":"23/03/26","ata":"13/04/26","shippingLine":"COSCO","duty":null,"shippingRelease":null,"customRel":null,"transfer":"13/04/26","tdo":null,"daysAtPort":141,"remarks":"COPY DOCS AND FORM M RECEIVED 17/2/26, DUTY PAID 24/4/26 EXAM BOOKED 27/4/26 EXAM CONDUCTED 29/4/26  QUERIED FOR WRONG CLASSIFICATION 5/5/26. DN ACCEPTED 15/5/26. AWAIT OBL FOR SHIPPING RELEASE & CUSTOM RELEASE"},{"fileRef":"TPPP 097","bol":"MEDUFF283834","allocDate":"26/02/26","size":"8X40FT","officer":"MR RASHEED","place":"OTA","eta":"01/04/26","ata":"13/04/26","shippingLine":"MSC","duty":null,"shippingRelease":"23/04/26","customRel":"23/04/26","transfer":"17/04/26","tdo":"24/04/26","daysAtPort":137,"remarks":"DELIVERED"},{"fileRef":"TPPP 098","bol":"MEDUK4997285","allocDate":"26/03/26","size":"3X40FT","officer":"MR OLUSEYE","place":"OTA","eta":"24/05/26","ata":"24/05/26","shippingLine":"MSC","duty":"15/06/26","shippingRelease":"26/06/26","customRel":"26/06/26","transfer":"24/05/26","tdo":"29/06/26","daysAtPort":100,"remarks":"FILE RECEIVED 26/3/26. PAAR RECEIVED 8/6/26. DTI SHARED 10/6/26.  DUTY RECEIVED @ COB15/6/26 TERMINAL PAID BY TEMPO 25/6/26 EXAM BOOKED 25/6/26. OBL RECEIVED 25/6/26EXAMINATION CONDUCTED 26/6/26 CUSTOM/SHIPPING RELEASED 26/6/26 TDO READY 29/6/26 AWAIT DELIVERY"},{"fileRef":"TPPP 099","bol":"MAEU267092204","allocDate":"02/06/26","size":"4X40FT","officer":"MR AYO","place":"OTA","eta":"01/05/26","ata":"01/05/26","shippingLine":"MAERSK LINE","duty":null,"shippingRelease":null,"customRel":null,"transfer":"01/05/26","tdo":null,"daysAtPort":123,"remarks":"FILE RECEIVED 2/6/26. PAAR RECEIVED 8/6/26. DRAFT ASSESSMENT SHARED 11/6/26. DRAFT APPROVAL DELAYING DUE TO 30% LEVY INCLUSIVE"},{"fileRef":"TPPP 100","bol":"MAEU721404586","allocDate":"02/06/26","size":"16X40FT","officer":null,"place":"OTA","eta":"10/06/26","ata":"11/06/26","shippingLine":"MAERSK LINE","duty":null,"shippingRelease":null,"customRel":null,"transfer":"11/06/26","tdo":null,"daysAtPort":82,"remarks":"FFILE RECEIVED 2/6/26 AWAIT PAAR"},{"fileRef":"TPPP 101","bol":"MAEU267764456","allocDate":"02/06/26","size":"2X40FT","officer":null,"place":"OTA","eta":"01/05/26","ata":"01/05/26","shippingLine":"MAERSK LINE","duty":null,"shippingRelease":null,"customRel":null,"transfer":"01/05/26","tdo":null,"daysAtPort":123,"remarks":"FILE RECEIVED 2/6/26. PAAR RECEIVED 16/6/26. DRAFT ASSESSMENT SHARED 17/6/26. DRAFT APPROVAL DELAYING DUE TO 30% LEVY INCLUSIVE"},{"fileRef":"TPPP 102","bol":"HLCUTS12603BLMU2","allocDate":"02/06/26","size":"1X40FT","officer":null,"place":"OTA","eta":"06/06/26","ata":"17/07/26","shippingLine":"HAPAG LLOYD","duty":null,"shippingRelease":null,"customRel":null,"transfer":null,"tdo":null,"daysAtPort":null,"remarks":"FILE RECEIVED 2/6/26 AWAIT PAAR"},{"fileRef":"TPPP 103","bol":"HBG2159040","allocDate":"16/6/26","size":"1X40FT","officer":null,"place":"OTA","eta":"13/7/26","ata":null,"shippingLine":"CMA","duty":null,"shippingRelease":null,"customRel":null,"transfer":null,"tdo":null,"daysAtPort":null,"remarks":"FILE RECEIVED 16/6/26 AWAIT PAAR"},{"fileRef":"TPPP 104","bol":"MEDUOM438935","allocDate":"19/6/26","size":"16X40FT","officer":null,"place":"OTA","eta":"18/7/26","ata":null,"shippingLine":"MSC","duty":null,"shippingRelease":null,"customRel":null,"transfer":null,"tdo":null,"daysAtPort":null,"remarks":"FILE RECEIVED 19/6/26 AWAIT PAAR"},{"fileRef":"TPPP 105","bol":null,"allocDate":"25/06/26","size":"11X40FT","officer":null,"place":"OTA","eta":"07/08/26","ata":null,"shippingLine":"MSC","duty":null,"shippingRelease":null,"customRel":null,"transfer":null,"tdo":null,"daysAtPort":null,"remarks":"FILE RECEIVED 25/6/26 AWAIT PAAR"}],"CWAY":[{"fileRef":"CWAY 105","bol":"23/02/26","allocDate":null,"size":"4X20FT","officer":"MR RASHEED","place":"OTA","eta":"26/02/26","ata":null,"shippingLine":"MAERSK LINE","duty":null,"shippingRelease":null,"customRel":null,"transfer":null,"tdo":"24/04/26","daysAtPort":null,"remarks":"PAAR AND FORM M RECEIVED 23/2/26, AWAIT DRAFT ASSESSMENT"},{"fileRef":"CWAY 106","bol":"S329051219","allocDate":null,"size":"1x20FT","officer":"MR TONY","place":null,"eta":"24/03/26","ata":null,"shippingLine":"GRIMALDI","duty":null,"shippingRelease":null,"customRel":null,"transfer":null,"tdo":"24/04/26","daysAtPort":null,"remarks":"DUTY PAID 26/3/26 NAFDAC PERMIT AVAILABLE 30/3/26 NAFDAC PAID 31/3/26 NAFDAC ENDORSED 7/4/26 GRIMALDI ACCESS CARD UNBLOCKED EXAM BOOKED 9/4/26,"},{"fileRef":"CWAY 107","bol":"MAEU263454321","allocDate":null,"size":"1X40FT","officer":"MR OLUSEYE","place":"PACKAGING FILM","eta":"25/04/26","ata":"27/04/26","shippingLine":"MAERSK LINE","duty":null,"shippingRelease":null,"customRel":null,"transfer":"27/04/26","tdo":null,"daysAtPort":127,"remarks":"FILE ALLOCATED 27/3/26 DTI SHARED 7/4/26 DUTY PAID 9/4/26,UNIT TRANSFERRED 29/4/26. EXAMINATION BOOKED 30/4/26 UNIT RE-ROUTED FOR SCANNING 8/5/26.AWAIT SCANNING"},{"fileRef":"CWAY 108","bol":"GOSUSNH22251941","allocDate":null,"size":"1X40FT","officer":"MR OLUSEYE","place":"POTASIUM SORBATE","eta":"16/04/26","ata":null,"shippingLine":"GOLD STAR","duty":null,"shippingRelease":"30/04/26","customRel":null,"transfer":null,"tdo":null,"daysAtPort":null,"remarks":"FILE ALLOCATED 01/4/26 DTI SHARED 9/4/26 TRANSFER=22/4/26 EXAMINATION BOOKED 23/4/26.EXAMINATION 25/4/26 QUERIED 27/4/26 QUERY RESOLVED 30/4/26. GATE/TDO 6/5/27 LOADED 7/5/26 DELIVERED"},{"fileRef":"CWAY 109","bol":"MEDUWP515671","allocDate":null,"size":"1X40FT","officer":"MR NURU","place":null,"eta":"08/04/26","ata":null,"shippingLine":"MSC","duty":null,"shippingRelease":"30/04/26","customRel":null,"transfer":null,"tdo":null,"daysAtPort":null,"remarks":"FILE ALLOCATED 7/4/26 DTI SHARED 8/4/26 DUTY PAID 9/4/26, AWAIT UNIT TRANSFER MEDLOG TERMINAL"},{"fileRef":"CWAY 110","bol":"S329124666","allocDate":null,"size":"1X40FT","officer":"MR TONY","place":"DISPENSER","eta":"07/04/26","ata":null,"shippingLine":"GRIMALDI","duty":null,"shippingRelease":null,"customRel":null,"transfer":null,"tdo":null,"daysAtPort":null,"remarks":"DELIVERED"},{"fileRef":"CWAY 111","bol":"TAWT60027600+I8:K8","allocDate":null,"size":"1X20FT","officer":"MR OLUSEYE","place":"LACTIC ACID","eta":null,"ata":null,"shippingLine":"PIL","duty":null,"shippingRelease":"08/05/26","customRel":"30/04/26","transfer":"22/04/26","tdo":null,"daysAtPort":132,"remarks":"FILE ALLOCATED ;DTI SHARED 15/4/26 TRANSFER=22/4/26 EXAMINATION BOOKED 23/4/26.EXAMINATION 25/4/26 QUERIED 27/4/26 QUERY RESOLVED 30/4/26. OC GATE QUERY SETTLED ,TDO READY 8/5/26"},{"fileRef":"CWAY 112","bol":"MAEU268580954","allocDate":null,"size":"1X40FT","officer":"MR OLUSEYE","place":"PRINTED LABEL","eta":"20/05/26","ata":"20/05/26","shippingLine":"MAERSK LINE","duty":null,"shippingRelease":null,"customRel":"09/06/26","transfer":"20/05/26","tdo":null,"daysAtPort":104,"remarks":"DUTY PAID 01/6/26 UNIT TRANSFERRED 20/05/26.NAFDAC ENDORSED 5/6/26 EXAM BOOKED 8/6/26 EXAM CONDUCTED 9/6/26 CUSTOM RELEASED 10/6/26. MAERSK OUTSTANDING DELAY SHIPPING RELEASE TILL NOW.AWAIT SHIPPING RELEASE TO WRITE TDO"},{"fileRef":"CWAY 113","bol":"MAEU268753897","allocDate":null,"size":"4X40T","officer":"MR OLUSEYE","place":"DISPENSER","eta":"01/06/26","ata":"02/06/26","shippingLine":"MAERSK LINE","duty":null,"shippingRelease":null,"customRel":null,"transfer":"02/06/26","tdo":null,"daysAtPort":91,"remarks":"DUTY PAID 29/5/26 UNIT TRANSFERRED 2/6/26.AWAIT GATE ENDORSEMENT TO WRITE TDO"},{"fileRef":"CWAY 114","bol":"MAEU269079032","allocDate":null,"size":"1X40FT","officer":"MR RASHEED","place":"APPLE,COFFEE & CREAM FLAVOUR","eta":"08/06/26","ata":"11/06/26","shippingLine":"MAERSK LINE","duty":"01/06/26","shippingRelease":"19/06/26","customRel":"16/06/26","transfer":"11/06/26","tdo":"17/06/26","daysAtPort":82,"remarks":"DUTY PAID 1/6/26 UNIT DISCHARGED AND EXAM BOOKED 11/6/26 PUBLIC HOLIDAY 12/6/26 EXAMINATION CONDUCTED 15/6/26 CUSTOM RELEASED 16/6/26 TDO READY BUT HELD BY NAQS 17/6/26.QUARANTINE RELEASED @COB 26/6/26.LOADING  COMPLETED 27/6/26"},{"fileRef":"CWAY 115","bol":"MAEU269163070","allocDate":null,"size":"2X40FT","officer":"MR OLUSEYE","place":"DRIED MALT EXTRA","eta":"08/06/26","ata":"11/06/26","shippingLine":"MAERSK LINE","duty":"02/06/26","shippingRelease":"15/06/26","customRel":"15/06/26","transfer":"11/06/26","tdo":"17/06/26","daysAtPort":82,"remarks":"DUTY PAID 1/6/26 UNIT DISCHARGED AND EXAM BOOKED 11/6/26 PUBLIC HOLIDAY 12/6/26 EXAMINATION CONDUCTED 15/6/26 CUSTOM RELEASED 16/6/26 TDO READY BUT HELD BY NAQS 17/6/26. QUARANTINE RELEASED @COB 26/6/26.LOADING  COMPLETED 27/6/26"},{"fileRef":"CWAY 116","bol":"MAEU802083797","allocDate":null,"size":"1X40FT","officer":"MR RASHEED","place":"PREFORM BOTTLE","eta":"24/06/26","ata":null,"shippingLine":"MAERSK LINE","duty":null,"shippingRelease":null,"customRel":null,"transfer":null,"tdo":null,"daysAtPort":null,"remarks":"FILE RECEIVED 18/6/26. SHIPMENT STILL IN TRANSSHIPMENT"},{"fileRef":"CWAY 117","bol":"S329456461","allocDate":null,"size":"1x20FT","officer":"MR TONY","place":"MILK FLAVOR","eta":"21/06/26","ata":"22/06/26","shippingLine":"GRIMALDI","duty":"24/06/26","shippingRelease":null,"customRel":null,"transfer":null,"tdo":null,"daysAtPort":null,"remarks":"FILE RECEIVED. DTI SHARED 22/6/26. DUTY PAID 24/6/26 NAFDAC ENDORSED,EXAM BOOKED 26/6/26 EXAMINATION CONDUCTED 29/6/26 AWAIT CUSTOM RELEASE & OBL FOR SHIPPING RELEASE"}],"SWIPHA":[{"fileRef":"SWISS 111","bol":"AMC2492191","allocDate":null,"size":"1X40FT","officer":"MR OLUSEYE","place":"AMLODIPINE","eta":"31/03/26","ata":"04/04/26","shippingLine":"CMA-CGM","duty":null,"shippingRelease":null,"customRel":null,"transfer":"04/04/26","tdo":"24/04/26","daysAtPort":150,"remarks":"DELIVERED"},{"fileRef":"SWISS 112","bol":"AMC2492305","allocDate":null,"size":"2X40FT","officer":"MR AYO","place":"OCEFIX","eta":"31/03/26","ata":"04/04/26","shippingLine":"CMA-CGM","duty":null,"shippingRelease":"17/04/26","customRel":"23/04/26","transfer":"04/04/26","tdo":"24/04/26","daysAtPort":150,"remarks":"DELIVERED"}],"RECKITT":[{"fileRef":"RKT 1347","bol":"MEDUW7096441","allocDate":null,"size":"1X20FT","officer":"MR RASHEED","place":"CPERMETHRIN & TRANSFLUTHRIN","eta":"16/02/26","ata":"25/03/26","shippingLine":"MSC","duty":null,"shippingRelease":"07/04/26","customRel":"07/04/26","transfer":"25/03/26","tdo":"24/04/26","daysAtPort":160,"remarks":"DELIVERED 8/7/26"},{"fileRef":"RKT 1349","bol":"MEDUWP866512","allocDate":null,"size":"2X20FT","officer":"MR NURU","place":"CASTOR OIL","eta":"11/04/26","ata":"18/05/26","shippingLine":"MSC","duty":null,"shippingRelease":"02/06/26","customRel":"09/06/26","transfer":"18/05/26","tdo":"09/06/26","daysAtPort":106,"remarks":"DELIVERED 10/6/26"}],"TEMPO EXPORT":[{"fileRef":"TPEXP 054","allocDate":"12/05/26","size":"8x40FT","containerNo":"MSBU8325258;MSMU8700368;MSDU6992876;MSBU7190857;MSCU5237687;MSMU6885719;FBLU0060574;MSMU4064000","truckOnSite":null,"loadingStarted":"16/05/26","loadingEnded":"27/05/26","packingList":"04/06/26","gateIn":"05/06/26","nessCci":"08/06/26","an":"08/06/26","customRel":"09/06/26","vesselEtaAta":"16/06/26","daysAtPort":88,"remarks":"DELAYED IN GETTING TRUCKS DUE TO TERMINAL OF DISCHARGED=5STAR 30/5/26. AWAIT VESSEL SAILING"}],"RECKITT EXPORT":[{"fileRef":"RKTEXP 279","allocDate":"28/04/26","size":"3x40ft","containerNo":"GCNU4826945;ACLU9814373; GCNU4851043","truckOnSite":"29/04/26","loadingStarted":"29/04/26","loadingEnded":"29/04/26","packingList":"29/04/26","gateIn":"05/05/26","nessCci":"21//5/26","an":"22/05/26","customRel":"25/05/26","vesselEtaAta":"13/06/26","daysAtPort":119,"remarks":"VESSEL SAILED 13/6/26.  LOCAL PAYMENT MADE 17/6/26 NNC SHARED 18/6/26. FILE SUBMITTED FOR INVOICING 18/6/27"}]};
+
+let RAW = {};
+
+const EXPORT_CLIENTS = new Set(['TEMPO EXPORT','RECKITT EXPORT']);
+const CLIENT_ORDER = ['LAFARGE','TEMPO','CWAY','SWIPHA','RECKITT','TEMPO EXPORT','RECKITT EXPORT'];
+
+const NORMAL_FIELDS = [
+  { key:'fileRef', label:'File ref', required:true },
+  { key:'bol', label:'BOL' },
+  { key:'allocDate', label:'Allocation date' },
+  { key:'size', label:'Size' },
+  { key:'officer', label:'Officer' },
+  { key:'place', label:'Place' },
+  { key:'eta', label:'ETA' },
+  { key:'ata', label:'ATA' },
+  { key:'shippingLine', label:'Shipping line' },
+  { key:'duty', label:'Duty' },
+  { key:'shippingRelease', label:'Shipping release' },
+  { key:'customRel', label:'Customs release' },
+  { key:'transfer', label:'Transfer / unstuffing' },
+  { key:'tdo', label:'TDO' },
+  { key:'daysAtPort', label:'Days at port', type:'number' },
+  { key:'remarks', label:'Remarks / activity log', type:'textarea' },
+];
+
+const EXPORT_FIELDS = [
+  { key:'fileRef', label:'File ref', required:true },
+  { key:'allocDate', label:'Allocation date' },
+  { key:'size', label:'Size' },
+  { key:'containerNo', label:'Container no(s) — separate with ;' },
+  { key:'truckOnSite', label:'Truck on site' },
+  { key:'loadingStarted', label:'Loading started' },
+  { key:'loadingEnded', label:'Loading ended' },
+  { key:'packingList', label:'Packing list' },
+  { key:'gateIn', label:'Gate in date' },
+  { key:'nessCci', label:'NESS / CCI' },
+  { key:'an', label:'AN' },
+  { key:'customRel', label:'Customs release' },
+  { key:'vesselEtaAta', label:'Vessel ETA/ATA' },
+  { key:'daysAtPort', label:'Days at port', type:'number' },
+  { key:'remarks', label:'Remarks / activity log', type:'textarea' },
+];
+
+function isDelivered(remarks){
+  if(!remarks) return false;
+  const r = remarks.toUpperCase();
+  return r.includes('DELIVERED') || r.includes('VESSEL SAILED');
+}
+
+function getStage(rec){
+  if(isDelivered(rec.remarks)) return 'delivered';
+  if(EXPORT_CLIENTS_HAS(rec)){
+    if(rec.customRel) return 'progress';
+    if(rec.loadingEnded || rec.loadingStarted || rec.truckOnSite) return 'progress';
+    return 'pending';
+  }
+  if(rec.tdo || rec.customRel || rec.transfer || rec.shippingRelease || rec.duty) return 'progress';
+  if(rec.ata) return 'progress';
+  return 'pending';
+}
+function EXPORT_CLIENTS_HAS(rec){ return 'containerNo' in rec; }
+
+function stageLabel(rec, stage){
+  if(stage==='delivered') return isDelivered(rec.remarks) && rec.remarks.toUpperCase().includes('VESSEL SAILED') ? 'Vessel sailed' : 'Delivered';
+  if(EXPORT_CLIENTS_HAS(rec)){
+    if(rec.customRel) return 'Customs released';
+    if(rec.loadingEnded) return 'Loading completed';
+    if(rec.loadingStarted) return 'Loading started';
+    if(rec.truckOnSite) return 'Truck on site';
+    return 'Awaiting loading';
+  }
+  if(rec.tdo) return 'TDO ready';
+  if(rec.customRel) return 'Customs released';
+  if(rec.transfer) return 'Unstuffed / transferred';
+  if(rec.shippingRelease) return 'Shipping released';
+  if(rec.duty) return 'Duty paid';
+  if(rec.ata) return 'At port — processing';
+  if(rec.eta) return 'In transit';
+  return 'Pending';
+}
+
+const ISSUE_TAGS = [
+  { key:'classification_query', test:/WRONG CLASSIFICATION|QUER/, label:'classification disputes / queries',
+    reco:n=>`Pre-check HS classification with the client before duty is filed — ${n} file${n>1?'s were':' was'} queried or held up over a disputed heading.` },
+  { key:'debit_note', test:/\bDN\b|DEBIT NOTE/, label:'debit notes',
+    reco:n=>`Build DN review time into the standard timeline — ${n} file${n>1?'s':''} attracted a debit note from customs.` },
+  { key:'regulatory_hold', test:/NESREA|NAFDAC|MARITIME POLICE|NAQS|QUARANTINE/, label:'regulatory holds',
+    reco:n=>`Start NAFDAC/NESREA/quarantine endorsement in parallel with customs processing, not after — ${n} file${n>1?'s were':' was'} held by a regulatory agency.` },
+  { key:'scanning_examination_delay', test:/SCANN|RE-ROUTED|EXAMINATION/, label:'scanning / examination delays',
+    reco:n=>`Book examination slots earlier to reduce re-routing to scanning — affected ${n} file${n>1?'s':''}.` },
+  { key:'payment_delay', test:/AWAIT.*PAYMENT|AWAIT DUTY|TERMINAL PAYMENT|AWAIT TERMINAL|LEVY/, label:'duty / terminal payment delays',
+    reco:n=>`Flag duty and terminal payment needs to the client as soon as PAAR/DTI is shared — ${n} file${n>1?'s were':' was'} stalled awaiting payment.` },
+  { key:'documentation_wait', test:/AWAIT PAAR|AWAIT VESSEL|AWAIT OBL|AWAIT PO NUMBER|AWAIT RTN/, label:'outstanding documentation',
+    reco:n=>`Track outstanding PAAR/OBL/RTN paperwork with a dedicated follow-up log — ${n} file${n>1?'s are':' is'} waiting on documents.` },
+  { key:'network_system_issue', test:/NETWORK/, label:'port network/system outages',
+    reco:n=>`Log port network downtime dates for SLA discussions with the terminal — cited in ${n} file${n>1?'s':''}.` },
+  { key:'shipping_line_delay', test:/SHIPPING RELEASE.*OUTSTANDING|OUTSTANDING.*SHIPPING RELEASE|AWAIT SHIPPING RELEASE/, label:'shipping-line release delays',
+    reco:n=>`Escalate outstanding shipping-line balances early to avoid held shipping release — affected ${n} file${n>1?'s':''}.` },
+];
+
+function scanIssues(remarks){
+  if(!remarks) return [];
+  const r = remarks.toUpperCase();
+  return ISSUE_TAGS.filter(t=>t.test.test(r)).map(t=>t.key);
+}
+
+function computeClientKpi(client){
+  const records = RAW[client] || [];
+  const isExport = EXPORT_CLIENTS.has(client);
+  const stages = records.map(r=>getStage(r));
+  const delivered = stages.filter(s=>s==='delivered').length;
+  const progress = stages.filter(s=>s==='progress').length;
+  const pending = stages.filter(s=>s==='pending').length;
+  const daysVals = records.map(r=>r.daysAtPort).filter(v=>v!=null);
+  const avgDays = daysVals.length ? Math.round((daysVals.reduce((a,b)=>a+b,0)/daysVals.length)*10)/10 : null;
+  let maxDays = null, maxFile = null;
+  daysVals.forEach((v,i)=>{ if(maxDays===null || v>maxDays){ maxDays=v; } });
+  if(maxDays!=null){
+    const rec = records.find(r=>r.daysAtPort===maxDays);
+    maxFile = rec ? rec.fileRef : null;
+  }
+  const issueTally = {};
+  records.forEach(r=>{
+    scanIssues(r.remarks).forEach(k=>{ issueTally[k] = (issueTally[k]||0) + 1; });
+  });
+  const labelTally = {};
+  records.forEach(r=>{
+    if(getStage(r) !== 'delivered'){
+      const l = stageLabel(r, getStage(r));
+      labelTally[l] = (labelTally[l]||0) + 1;
+    }
+  });
+  let bottleneck = null, bottleneckCount = 0;
+  Object.entries(labelTally).forEach(([l,c])=>{ if(c>bottleneckCount){ bottleneck=l; bottleneckCount=c; } });
+
+  return { total:records.length, delivered, progress, pending, avgDays, maxDays, maxFile, issueTally, bottleneck, bottleneckCount };
+}
+
+function topIssues(issueTally, limit){
+  return Object.entries(issueTally).sort((a,b)=>b[1]-a[1]).slice(0, limit);
+}
+
+function renderPortfolioStats(){
+  let total=0, delivered=0, progress=0, pending=0, daysVals=[];
+  CLIENT_ORDER.forEach(c=>{
+    (RAW[c]||[]).forEach(r=>{
+      total++;
+      const s = getStage(r);
+      if(s==='delivered') delivered++; else if(s==='progress') progress++; else pending++;
+      if(r.daysAtPort!=null) daysVals.push(r.daysAtPort);
+    });
+  });
+  const avgDays = daysVals.length ? Math.round((daysVals.reduce((a,b)=>a+b,0)/daysVals.length)*10)/10 : null;
+  document.getElementById('portfolio-stats').innerHTML = `
+    <div class="stat"><div class="num mono">${total}</div><div class="label">Total files, all clients</div></div>
+    <div class="stat delivered"><div class="num mono">${delivered}</div><div class="label">Delivered</div></div>
+    <div class="stat progress"><div class="num mono">${progress}</div><div class="label">In process</div></div>
+    <div class="stat pending"><div class="num mono">${pending}</div><div class="label">Awaiting arrival</div></div>
+    <div class="stat"><div class="num mono">${avgDays!=null ? avgDays : '—'}</div><div class="label">Avg days at port (open+closed)</div></div>
+  `;
+}
+
+function renderProcessFunnel(){
+  const labelTally = {};
+  let maxCount = 1;
+  CLIENT_ORDER.forEach(c=>{
+    (RAW[c]||[]).forEach(r=>{
+      if(getStage(r) !== 'delivered'){
+        const l = stageLabel(r, getStage(r));
+        labelTally[l] = (labelTally[l]||0) + 1;
+      }
+    });
+  });
+  Object.values(labelTally).forEach(v=>{ if(v>maxCount) maxCount=v; });
+  const rows = Object.entries(labelTally).sort((a,b)=>b[1]-a[1]);
+  document.getElementById('process-funnel').innerHTML = rows.map(([label,count])=>`
+    <div class="funnel-row">
+      <div class="funnel-label">${label}</div>
+      <div class="funnel-track"><div class="funnel-fill" style="width:${Math.round(count/maxCount*100)}%"></div></div>
+      <div class="funnel-count mono">${count}</div>
+    </div>
+  `).join('');
+}
+
+function renderProcessRecos(){
+  const overallTally = {};
+  CLIENT_ORDER.forEach(c=>{
+    (RAW[c]||[]).forEach(r=>{
+      scanIssues(r.remarks).forEach(k=>{ overallTally[k] = (overallTally[k]||0) + 1; });
+    });
+  });
+  const top = Object.entries(overallTally).sort((a,b)=>b[1]-a[1]).slice(0,4);
+  const list = document.getElementById('process-recos');
+  if(top.length===0){
+    list.innerHTML = '<li>No recurring issue patterns found in the current remarks.</li>';
+    return;
+  }
+  list.innerHTML = top.map(([key,count])=>{
+    const tag = ISSUE_TAGS.find(t=>t.key===key);
+    return `<li>${tag.reco(count)} (across the whole portfolio)</li>`;
+  }).join('');
+}
+
+function renderClientKpiGrid(){
+  const grid = document.getElementById('client-kpi-grid');
+  grid.innerHTML = CLIENT_ORDER.map(client=>{
+    const kpi = computeClientKpi(client);
+    const top = topIssues(kpi.issueTally, 3);
+    let recoHtml;
+    if(top.length===0){
+      recoHtml = `<div class="no-issue">No recurring issues flagged in remarks — maintain current turnaround.</div>`;
+    } else {
+      recoHtml = `<ul class="reco-list">${top.map(([key,count])=>{
+        const tag = ISSUE_TAGS.find(t=>t.key===key);
+        return `<li>${tag.reco(count)}</li>`;
+      }).join('')}</ul>`;
+    }
+    const dwellText = kpi.avgDays!=null ? `avg <b>${kpi.avgDays}</b> days at port` : 'no dwell data';
+    const longestText = kpi.maxDays!=null ? ` · longest open: <b>${kpi.maxFile}</b> (${kpi.maxDays}d)` : '';
+    return `
+      <div class="client-kpi-card">
+        <div class="client-kpi-head">
+          <span class="name">${client}</span>
+          <span class="dwell mono">${dwellText}${longestText}</span>
+        </div>
+        <div class="kpi-mini-row">
+          <span><b>${kpi.total}</b> files</span>
+          <span><b>${kpi.delivered}</b> delivered</span>
+          <span><b>${kpi.progress}</b> in process</span>
+          <span><b>${kpi.pending}</b> awaiting arrival</span>
+          ${kpi.bottleneck ? `<span>most open files sit at <b>${kpi.bottleneck}</b> (${kpi.bottleneckCount})</span>` : ''}
+        </div>
+        ${recoHtml}
+      </div>
+    `;
+  }).join('');
+}
+
+function renderKpiView(){
+  renderPortfolioStats();
+  renderProcessFunnel();
+  renderProcessRecos();
+  renderClientKpiGrid();
+}
+
+document.getElementById('tab-board').addEventListener('click', ()=>{
+  document.getElementById('tab-board').classList.add('active');
+  document.getElementById('tab-kpis').classList.remove('active');
+  document.getElementById('view-board').style.display = '';
+  document.getElementById('view-kpis').style.display = 'none';
+});
+document.getElementById('tab-kpis').addEventListener('click', ()=>{
+  document.getElementById('tab-kpis').classList.add('active');
+  document.getElementById('tab-board').classList.remove('active');
+  document.getElementById('view-board').style.display = 'none';
+  document.getElementById('view-kpis').style.display = '';
+  renderKpiView();
+});
+
+let flags = {};
+let activeClient = CLIENT_ORDER[0];
+let searchTerm = '';
+let stageFilter = 'all';
+let flagFilter = 'all';
+
+// ---------- Firestore-backed shared storage ----------
+// Everyone who opens this page shares two documents in the "skb-tracker"
+// collection: "files" (the RAW board data) and "flags" (flagged-for-attention
+// state). onSnapshot keeps every open tab live-updated when anyone else saves.
+let booted = false;
+let syncBanner = null;
+
+function setSyncStatus(text, isError){
+  if(!syncBanner) return;
+  syncBanner.textContent = text;
+  syncBanner.style.color = isError ? 'var(--status-alert)' : 'var(--paper-dim)';
+}
+
+function watchDoc(docId, onData){
+  return new Promise((resolve)=>{
+    let first = true;
+    db.collection('skb-tracker').doc(docId).onSnapshot(async snap=>{
+      await onData(snap);
+      if(first){ first = false; resolve(); }
+    }, err=>{
+      console.error('Sync error on '+docId, err);
+      setSyncStatus('Sync error — showing last known data. Check your connection.', true);
+      if(first){ first = false; resolve(); }
+    });
+  });
+}
+
+async function saveFlags(){
+  try{ await db.collection('skb-tracker').doc('flags').set({ json: JSON.stringify(flags) }); }
+  catch(e){ console.error('Could not save flags', e); setSyncStatus('Could not save — check your connection.', true); }
+}
+
+async function saveRawData(){
+  try{ await db.collection('skb-tracker').doc('files').set({ json: JSON.stringify(RAW) }); }
+  catch(e){ console.error('Could not save file data', e); setSyncStatus('Could not save — check your connection.', true); }
+}
+
+async function initSync(){
+  await Promise.all([
+    watchDoc('files', async snap=>{
+      if(snap.exists && snap.data().json){
+        RAW = JSON.parse(snap.data().json);
+      } else {
+        // First time anyone has opened this board — seed it from the data
+        // baked into this file, so the board isn't empty.
+        RAW = JSON.parse(JSON.stringify(DEFAULT_RAW));
+        await saveRawData();
+      }
+      if(booted){ renderGates(); renderAll(); }
+    }),
+    watchDoc('flags', snap=>{
+      flags = (snap.exists && snap.data().json) ? JSON.parse(snap.data().json) : {};
+      if(booted){ renderStats(); renderFileList(); }
+    }),
+  ]);
+}
+
+function setClock(){
+  document.getElementById('summary-clock').textContent = 'TOTAL FILES TRACKED: ' + Object.values(RAW).reduce((a,v)=>a+v.length,0);
+}
+
+function renderGates(){
+  const wrap = document.getElementById('gates');
+  wrap.innerHTML = CLIENT_ORDER.map(c=>{
+    const n = RAW[c] ? RAW[c].length : 0;
+    return `<button class="gate ${c===activeClient?'active':''}" data-client="${c}">${c}<span class="count">${n}</span></button>`;
+  }).join('');
+  wrap.querySelectorAll('.gate').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ activeClient = btn.dataset.client; renderGates(); renderAll(); });
+  });
+}
+
+function renderStats(){
+  const records = RAW[activeClient] || [];
+  const total = records.length;
+  const delivered = records.filter(r=>getStage(r)==='delivered').length;
+  const progress = records.filter(r=>getStage(r)==='progress').length;
+  const pending = records.filter(r=>getStage(r)==='pending').length;
+  const flagged = records.filter(r=>flags[r.fileRef]).length;
+  document.getElementById('stats').innerHTML = `
+    <div class="stat"><div class="num mono">${total}</div><div class="label">Files — ${activeClient}</div></div>
+    <div class="stat delivered"><div class="num mono">${delivered}</div><div class="label">Delivered</div></div>
+    <div class="stat progress"><div class="num mono">${progress}</div><div class="label">In process</div></div>
+    <div class="stat pending"><div class="num mono">${pending}</div><div class="label">Awaiting arrival</div></div>
+    <div class="stat flagged"><div class="num mono">${flagged}</div><div class="label">Flagged</div></div>
+  `;
+}
+
+function matches(rec){
+  const stage = getStage(rec);
+  if(stageFilter!=='all' && stage!==stageFilter) return false;
+  if(flagFilter==='flagged' && !flags[rec.fileRef]) return false;
+  if(searchTerm){
+    const hay = JSON.stringify(rec).toLowerCase();
+    if(!hay.includes(searchTerm.toLowerCase())) return false;
+  }
+  return true;
+}
+
+function milestoneRow(label, value){
+  return `<div class="milestone"><div class="k">${label}</div><div class="v ${value?'':'empty'}">${value || '—'}</div></div>`;
+}
+
+function renderFileList(){
+  const records = (RAW[activeClient] || []).filter(matches);
+  document.getElementById('result-count').textContent = `${records.length} of ${(RAW[activeClient]||[]).length} files`;
+  const list = document.getElementById('file-list');
+
+  if(records.length===0){
+    list.innerHTML = `<div class="empty-state">No files match these filters.</div>`;
+    return;
+  }
+
+  const isExport = EXPORT_CLIENTS.has(activeClient);
+
+  list.innerHTML = records.map(rec=>{
+    const stage = getStage(rec);
+    const label = stageLabel(rec, stage);
+    const flagged = !!flags[rec.fileRef];
+    const days = rec.daysAtPort;
+    let milestones;
+    if(isExport){
+      milestones = [
+        milestoneRow('Allocation date', rec.allocDate),
+        milestoneRow('Truck on site', rec.truckOnSite),
+        milestoneRow('Loading started', rec.loadingStarted),
+        milestoneRow('Loading ended', rec.loadingEnded),
+        milestoneRow('Packing list', rec.packingList),
+        milestoneRow('Gate in date', rec.gateIn),
+        milestoneRow('NESS / CCI', rec.nessCci),
+        milestoneRow('AN', rec.an),
+        milestoneRow('Customs release', rec.customRel),
+        milestoneRow('Vessel ETA/ATA', rec.vesselEtaAta),
+      ].join('');
+    } else {
+      milestones = [
+        milestoneRow('Allocation date', rec.allocDate),
+        milestoneRow('ETA', rec.eta),
+        milestoneRow('ATA', rec.ata),
+        milestoneRow('Shipping line', rec.shippingLine),
+        rec.duty!==undefined ? milestoneRow('Duty', rec.duty) : '',
+        milestoneRow('Shipping release', rec.shippingRelease),
+        milestoneRow('Customs release', rec.customRel),
+        milestoneRow('Transfer / unstuffing', rec.transfer),
+        milestoneRow('TDO', rec.tdo),
+      ].join('');
+    }
+
+    return `
+    <div class="file ${flagged?'flagged':''}" data-ref="${rec.fileRef}">
+      <div class="file-head" data-toggle="${rec.fileRef}">
+        <span class="chev">▸</span>
+        <span class="file-ref">${rec.fileRef}</span>
+        <div class="file-mid">
+          <div class="file-line1">${rec.size || '—'} · ${rec.officer || (isExport ? '' : 'Unassigned')}${rec.place ? ' · ' + rec.place : ''}</div>
+          <div class="file-line2">${isExport ? (rec.containerNo ? rec.containerNo.split(';')[0] + (rec.containerNo.includes(';') ? ' +more' : '') : 'No container logged') : (rec.shippingLine || 'No shipping line logged')}</div>
+        </div>
+        <span class="badge ${stage}">${label}</span>
+        <span class="days-chip">${days!=null ? '<b>'+days+'</b> days at port' : '—'}</span>
+      </div>
+      <div class="file-detail">
+        <div class="milestones">${milestones}</div>
+        <div class="remarks-block">
+          <div class="k">Remarks / activity log</div>
+          <div class="remarks-text">${rec.remarks || 'No remarks logged.'}</div>
+        </div>
+        <div class="file-actions">
+          <button class="btn secondary" data-edit="${rec.fileRef}">Edit</button>
+          <button class="flag-btn ${flagged?'on':''}" data-flag="${rec.fileRef}">${flagged ? 'Unflag' : 'Flag for attention'}</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('[data-toggle]').forEach(head=>{
+    head.addEventListener('click', ()=>{
+      const card = head.closest('.file');
+      card.classList.toggle('open');
+      const chev = head.querySelector('.chev');
+      chev.textContent = card.classList.contains('open') ? '▾' : '▸';
+    });
+  });
+
+  list.querySelectorAll('[data-flag]').forEach(btn=>{
+    btn.addEventListener('click', async (e)=>{
+      e.stopPropagation();
+      const ref = btn.dataset.flag;
+      flags[ref] = !flags[ref];
+      renderStats();
+      renderFileList();
+      await saveFlags();
+    });
+  });
+
+  list.querySelectorAll('[data-edit]').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      openForm(activeClient, btn.dataset.edit);
+    });
+  });
+}
+
+function renderAll(){
+  renderStats();
+  renderFileList();
+}
+
+document.getElementById('search').addEventListener('input', (e)=>{ searchTerm = e.target.value; renderFileList(); });
+document.getElementById('stage-filter').addEventListener('change', (e)=>{ stageFilter = e.target.value; renderFileList(); });
+document.getElementById('flag-filter').addEventListener('change', (e)=>{ flagFilter = e.target.value; renderFileList(); });
+
+/* ---------- ADD / EDIT FORM ---------- */
+let editingClient = null;
+let editingRef = null;
+
+function fieldsFor(client){ return EXPORT_CLIENTS.has(client) ? EXPORT_FIELDS : NORMAL_FIELDS; }
+
+function populateClientSelect(selected){
+  const sel = document.getElementById('form-client');
+  sel.innerHTML = CLIENT_ORDER.map(c=>`<option value="${c}" ${c===selected?'selected':''}>${c}</option>`).join('');
+}
+
+function renderFormFields(client, record){
+  const fields = fieldsFor(client);
+  const wrap = document.getElementById('form-fields');
+  wrap.innerHTML = fields.map(f=>{
+    const val = record ? (record[f.key]==null ? '' : record[f.key]) : '';
+    const esc = String(val).replace(/"/g,'&quot;');
+    if(f.type==='textarea'){
+      return `<div class="form-row" style="grid-column:1/-1;"><label>${f.label}${f.required?' *':''}</label><textarea data-field="${f.key}">${esc}</textarea></div>`;
+    }
+    const inputType = f.type==='number' ? 'number' : 'text';
+    return `<div class="form-row"><label>${f.label}${f.required?' *':''}</label><input type="${inputType}" data-field="${f.key}" value="${esc}"></div>`;
+  }).join('');
+}
+
+function openForm(client, fileRefToEdit){
+  editingClient = client;
+  editingRef = fileRefToEdit || null;
+  const record = editingRef ? (RAW[client]||[]).find(r=>r.fileRef===editingRef) : null;
+  document.getElementById('modal-title').textContent = editingRef ? `EDIT — ${editingRef}` : 'NEW FILE';
+  document.getElementById('form-error').classList.remove('show');
+  populateClientSelect(client);
+  document.getElementById('form-client').disabled = !!editingRef; // don't move a file between clients mid-edit
+  renderFormFields(client, record);
+  document.getElementById('form-delete').style.display = editingRef ? '' : 'none';
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeForm(){
+  document.getElementById('modal-overlay').classList.remove('open');
+  editingClient = null;
+  editingRef = null;
+}
+
+async function saveForm(){
+  const client = document.getElementById('form-client').value;
+  const fields = fieldsFor(client);
+  const errorEl = document.getElementById('form-error');
+  const values = {};
+  document.querySelectorAll('#form-fields [data-field]').forEach(el=>{
+    const key = el.dataset.field;
+    let v = el.value.trim();
+    if(key==='daysAtPort'){ values[key] = v==='' ? null : Number(v); }
+    else{ values[key] = v==='' ? null : v; }
+  });
+  if(!values.fileRef){
+    errorEl.textContent = 'File ref is required.';
+    errorEl.classList.add('show');
+    return;
+  }
+  if(!RAW[client]) RAW[client] = [];
+  const dupe = RAW[client].find(r=>r.fileRef===values.fileRef && r.fileRef!==editingRef);
+  if(dupe){
+    errorEl.textContent = `A file with ref "${values.fileRef}" already exists under ${client}.`;
+    errorEl.classList.add('show');
+    return;
+  }
+  // Ensure every field on the schema exists on the record (even if null), matching the shape of the seed data.
+  fields.forEach(f=>{ if(!(f.key in values)) values[f.key] = null; });
+
+  if(editingRef){
+    const idx = RAW[client].findIndex(r=>r.fileRef===editingRef);
+    if(idx>-1) RAW[client][idx] = { ...RAW[client][idx], ...values };
+  } else {
+    RAW[client].push(values);
+  }
+  await saveRawData();
+  closeForm();
+  activeClient = client;
+  renderGates();
+  renderAll();
+}
+
+async function deleteForm(){
+  if(!editingRef || !editingClient) return;
+  if(!confirm(`Delete file ${editingRef}? This can't be undone.`)) return;
+  RAW[editingClient] = (RAW[editingClient]||[]).filter(r=>r.fileRef!==editingRef);
+  await saveRawData();
+  closeForm();
+  renderGates();
+  renderAll();
+}
+
+document.getElementById('new-file-btn').addEventListener('click', ()=> openForm(activeClient, null));
+document.getElementById('modal-close').addEventListener('click', closeForm);
+document.getElementById('form-cancel').addEventListener('click', closeForm);
+document.getElementById('form-save').addEventListener('click', saveForm);
+document.getElementById('form-delete').addEventListener('click', deleteForm);
+document.getElementById('modal-overlay').addEventListener('click', (e)=>{ if(e.target.id==='modal-overlay') closeForm(); });
+document.getElementById('form-client').addEventListener('change', (e)=>{
+  if(!editingRef) renderFormFields(e.target.value, null);
+});
+
+(async function init(){
+  syncBanner = document.getElementById('sync-status');
+  setSyncStatus('Connecting…', false);
+  setClock();
+  await initSync();
+  setSyncStatus('', false);
+  booted = true;
+  renderGates();
+  renderAll();
+  setClock();
+})();
+</script>
+</body>
+</html>
